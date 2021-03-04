@@ -1,6 +1,6 @@
-/* Mega Tiny Time Watch
+/* Mega Tiny Time Watch v2
 
-   David Johnson-Davies - www.technoblogy.com - 7th January 2020
+   David Johnson-Davies - www.technoblogy.com - 8th November 2020
    ATtiny414 @ 5 MHz (internal oscillator; BOD disabled)
    
    CC BY 4.0
@@ -15,7 +15,6 @@
 const int Tickspersec = 250;              // Units of MyDelay()
 
 volatile int Timeout;
-volatile int Offset = 0;                  // For setting time
 volatile uint8_t Cycle = 0;
 
 volatile unsigned int Secs = 0;
@@ -48,7 +47,6 @@ ISR(TCB0_INT_vect) {
   TCB0.INTFLAGS = TCB_CAPT_bm;                        // Clear the interrupt flag
   DisplayNextRow();
   Timeout--;
-  Offset++;
 }
 
 void DisplayOn () {
@@ -124,7 +122,7 @@ void RTCSetup () {
   // 32.768kHz External Crystal Oscillator (XOSC32K)
   RTC.CLKSEL = RTC_CLKSEL_TOSC32K_gc;
   
-  RTC.DBGCTRL = RTC_DBGRUN_bm; // Run in debug: enabled
+  RTC.DBGCTRL = RTC_DBGRUN_bm;                        // Run in debug: enabled
 
   RTC.PITINTCTRL = RTC_PI_bm;                         // Periodic Interrupt: enabled
   
@@ -141,7 +139,8 @@ ISR(RTC_PIT_vect) {
 // Show time button **********************************************
 
 void ButtonEnable () {
-  PORTA.PIN2CTRL = PORT_PULLUPEN_bm | PORT_ISC_LEVEL_gc; // Pullup, Trigger low level
+  PORTA.PIN2CTRL = PORT_PULLUPEN_bm;                   // Pullup
+  PORTA.PIN2CTRL = PORTA.PIN2CTRL | PORT_ISC_LEVEL_gc; // Trigger low level
 }
 
 ISR(PORTA_PORT_vect) {
@@ -158,16 +157,17 @@ void SleepSetup () {
 }
 
 void SetTime () {
-  unsigned int secs = 0;
+  unsigned int secs = 0, offset = 0;
   ButtonEnable();
   while (!ShowTime) {
     Fivemins = (secs/300)%12;
-    Hours = ((secs+1799)/3600)%12;
+    Hours = ((secs+1800)/3600)%12;
     // Write time to global Secs
-    Secs = secs + (Offset/Tickspersec);
+    Secs = secs + offset;
     DisplayOn();
     MyDelay(Tickspersec);
     DisplayOff();
+    offset++;
     secs = secs + 300;
   }
 }
